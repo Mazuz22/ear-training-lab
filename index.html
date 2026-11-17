@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ear Training Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: one practice bench. Drill tabs on top, a listening card with answer keys, a piano that reveals the notes, settings in a side column. */
+:root{
+  --bg:#ECEFF3; --surface:#FFFFFF; --sunken:#E2E7ED; --ink:#141B25; --muted:#586475; --line:#D2D9E2;
+  --accent:#3A49CF; --accent-ink:#FFFFFF; --accent-soft:#E1E4FA;
+  --good:#15805A; --good-soft:#DBF1E7; --bad:#C23B34; --bad-soft:#FAE1DF;
+  --key-white:#FFFFFF; --key-black:#1A2130; --key-line:#B7C0CC;
+  --display:"Bricolage Grotesque","Inter",system-ui,sans-serif;
+  --body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#10141A; --surface:#181E27; --sunken:#202835; --ink:#E6EBF1; --muted:#97A3B2; --line:#2B3442;
+  --accent:#8F9CFF; --accent-ink:#0E1220; --accent-soft:#252C52;
+  --good:#4CC994; --good-soft:#173A2C; --bad:#FF7F77; --bad-soft:#43201E;
+  --key-white:#DCE2EA; --key-black:#0B0E13; --key-line:#5B6676; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10141A; --surface:#181E27; --sunken:#202835; --ink:#E6EBF1; --muted:#97A3B2; --line:#2B3442;
+  --accent:#8F9CFF; --accent-ink:#0E1220; --accent-soft:#252C52;
+  --good:#4CC994; --good-soft:#173A2C; --bad:#FF7F77; --bad-soft:#43201E;
+  --key-white:#DCE2EA; --key-black:#0B0E13; --key-line:#5B6676; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:1080px;margin:0 auto;padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:20px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(28px,5vw,40px);line-height:1.05;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.tag{color:var(--muted);margin:6px 0 0;max-width:60ch}
+.score{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted);display:flex;gap:14px;align-items:center}
+.score b{color:var(--ink);font-weight:600}
+.linkbtn{background:none;border:0;color:var(--muted);font:inherit;text-decoration:underline;cursor:pointer;padding:0}
+
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:var(--sunken);padding:4px;border-radius:12px}
+.tabs button{border:0;background:transparent;color:var(--muted);font:600 14px var(--body);padding:10px 6px;border-radius:9px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px}
+.tabs button small{font-weight:400;font-size:12px}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:20px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+
+.bench{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:18px;min-width:0}
+.prompt h2{font-family:var(--display);font-weight:500;font-size:22px;margin:0;text-wrap:balance}
+.prompt p{margin:4px 0 0;color:var(--muted);font-size:14px}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn{font:600 15px var(--body);border-radius:10px;padding:11px 18px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink);display:inline-flex;align-items:center;gap:8px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.big{padding:14px 24px;font-size:16px}
+.btn:disabled{opacity:.45;cursor:default}
+.btn kbd{font:500 11px var(--mono);opacity:.7;border:1px solid currentColor;border-radius:4px;padding:0 4px}
+.btn svg{width:16px;height:16px;fill:currentColor}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+.answers{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}
+.ans{position:relative;overflow:hidden;text-align:left;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:10px 12px 13px;cursor:pointer;font:inherit;display:flex;flex-direction:column;gap:1px;min-width:0}
+.ans:hover:not(:disabled){border-color:var(--accent)}
+.ans .k{position:absolute;top:7px;right:9px;font:500 11px var(--mono);color:var(--muted)}
+.ans .l{font-weight:600;font-size:16px;font-family:var(--mono)}
+.ans .l.word{font-family:var(--body)}
+.ans .s{font-size:12px;color:var(--muted);line-height:1.35}
+.ans .bar{position:absolute;left:0;bottom:0;height:3px;background:var(--good);opacity:.55;width:var(--acc,0%)}
+.ans.right{background:var(--good-soft);border-color:var(--good)}
+.ans.wrong{background:var(--bad-soft);border-color:var(--bad)}
+.ans.heard{box-shadow:inset 0 0 0 2px var(--accent)}
+.ans:disabled{opacity:.35;cursor:not-allowed}
+.empty{color:var(--muted);background:var(--sunken);border-radius:10px;padding:14px}
+
+.feedback{border-radius:12px;padding:14px 16px;background:var(--sunken);display:flex;flex-direction:column;gap:6px}
+.feedback.ok{background:var(--good-soft)}
+.feedback.no{background:var(--bad-soft)}
+.feedback .head{font-weight:600;font-size:16px}
+.feedback.ok .head{color:var(--good)} .feedback.no .head{color:var(--bad)}
+.feedback .detail{font-family:var(--mono);font-size:13px}
+.feedback .hint{font-size:13px;color:var(--muted)}
+.feedback .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.feedback .btn{padding:7px 12px;font-size:13px}
+
+.piano{background:var(--sunken);border-radius:12px;padding:12px 12px 8px}
+.piano svg{display:block;width:100%;height:auto;max-height:150px}
+.piano .cap{font-size:12px;color:var(--muted);margin-top:6px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.wk{fill:var(--key-white);stroke:var(--key-line);stroke-width:1}
+.bk{fill:var(--key-black)}
+.wk.on,.bk.on{fill:var(--accent)}
+.kl{font:600 9px var(--mono);fill:var(--accent-ink);text-anchor:middle}
+.cl{font:500 8px var(--mono);fill:var(--muted);text-anchor:middle}
+
+aside{display:flex;flex-direction:column;gap:14px;min-width:0}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.panel h3{margin:0;font:600 12px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+fieldset{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;min-width:0}
+legend{font-weight:600;font-size:13px;padding:0;margin-bottom:6px}
+.checks{display:flex;flex-wrap:wrap;gap:6px}
+.chip{position:relative}
+.chip input{position:absolute;opacity:0;inset:0;cursor:pointer;margin:0}
+.chip span{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:13px;font-family:var(--mono);color:var(--muted);user-select:none}
+.chip input:checked+span{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
+.chip input:focus-visible+span{outline:3px solid var(--accent);outline-offset:1px}
+select,input[type=range]{width:100%;font:inherit}
+select{padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.toggle{display:flex;gap:8px;align-items:center;font-size:14px}
+.weak{font-size:13px;color:var(--muted)}
+.weak b{color:var(--bad);font-family:var(--mono)}
+.keys{font-size:12px;color:var(--muted);line-height:1.7}
+.keys kbd{font:500 11px var(--mono);border:1px solid var(--line);border-radius:4px;padding:0 5px;background:var(--surface);color:var(--ink)}
+[lang="he"]{font-family:var(--body)}
+button,.piano svg{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.kl,.cl{pointer-events:none}
+.piano rect{cursor:pointer}
+.wk.tap,.bk.tap{fill:var(--accent-soft)}
+.setwrap>summary{cursor:pointer;list-style:none;font:600 14px var(--body);padding:12px 16px;background:var(--surface);border:1px solid var(--line);border-radius:12px;display:flex;justify-content:space-between;align-items:center}
+.setwrap>summary::-webkit-details-marker{display:none}
+.setwrap>summary::after{content:"Show";font-weight:500;color:var(--muted);font-size:13px}
+.setwrap[open]>summary::after{content:"Hide"}
+.setinner{display:flex;flex-direction:column;gap:14px;margin-top:14px}
+.ios{display:none;margin:0;font-size:13px;color:var(--muted)}
+.touch .ios{display:block}
+.touch kbd,.touch .keys,.touch .ans .k{display:none}
+.swipe{display:none}
+@media (max-width:600px){
+  .wrap{padding-block:18px 120px;gap:16px}
+  .bench{padding:16px;border-radius:14px}
+  .prompt h2{font-size:19px}
+  .tabs button{padding:9px 2px;font-size:13px}
+  .answers{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ans{min-height:70px;padding:12px}
+  .ans .l{font-size:17px}
+  .controls{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);
+    padding-top:10px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));
+    padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));box-shadow:0 -4px 16px rgba(0,0,0,.08)}
+  .controls .btn{flex:1;justify-content:center;padding:14px 10px}
+  .btn.big{font-size:16px}
+  .touch .swipe{display:block}
+}
+@media (prefers-reduced-motion:no-preference){.ans,.btn{transition:background-color .15s,border-color .15s}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Ear Training Lab</h1>
+      <p class="tag">Pentachords in four modes, intervals up to the sixth, chord inversions and tensions. Listen, answer, then tap any answer to compare it against what you heard.</p>
+    </div>
+    <div class="score" id="score"></div>
+  </header>
+
+  <nav class="tabs" role="tablist" id="tabs"></nav>
+
+  <div class="grid">
+    <main class="bench">
+      <div class="prompt"><h2 id="prompt"></h2><p id="sub"></p></div>
+      <div class="controls">
+        <button class="btn primary big" id="play" type="button"></button>
+        <button class="btn" id="next" type="button">Next question <kbd>Enter</kbd></button>
+      </div>
+      <div class="answers" id="answers"></div>
+      <div class="feedback" id="feedback"></div>
+      <div class="piano"><div id="kb"></div><div class="cap"><span id="kbcap"></span><span id="kbrange"></span></div></div>
+    </main>
+
+    <aside>
+     <details class="setwrap" id="setwrap" open>
+      <summary>Settings</summary>
+      <div class="setinner">
+      <section class="panel" id="settings"></section>
+      <section class="panel">
+        <h3>General</h3>
+        <fieldset><legend>Speed</legend><input type="range" id="speed" min="0.6" max="1.6" step="0.1"></fieldset>
+        <fieldset><legend>Volume</legend><input type="range" id="volume" min="0.1" max="1" step="0.05"></fieldset>
+        <label class="toggle"><input type="checkbox" id="autonext"> Go to the next question after a correct answer</label>
+        <div class="weak" id="weak"></div>
+        <div class="keys"><kbd>Space</kbd> play / replay · <kbd>1</kbd>–<kbd>9</kbd> answer · <kbd>Enter</kbd> next</div>
+        <p class="ios">No sound on iPhone? Turn off silent mode.</p>
+        <button class="linkbtn" id="resetstats" type="button">Reset stats for this drill</button>
+      </section>
+      </div>
+     </details>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function(){
+const NAMES=['C','D♭','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
+const nn=m=>NAMES[((m%12)+12)%12];
+const rand=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const $=id=>document.getElementById(id);
+const narrow=window.matchMedia?matchMedia('(max-width:600px)'):{matches:false};
+
+/* ---------- music data ---------- */
+const MODES=[
+  {id:'major',label:'Major',he:'מז׳ור',steps:[0,2,4,5,7],pat:'T T S T'},
+  {id:'minor',label:'Minor',he:'מינור',steps:[0,2,3,5,7],pat:'T S T T'},
+  {id:'phrygian',label:'Phrygian',he:'פריגי',steps:[0,1,3,5,7],pat:'S T T T'},
+  {id:'lydian',label:'Lydian',he:'לידי',steps:[0,2,4,6,7],pat:'T T T S'}
+];
+const INTERVALS=[
+  {id:'m2',s:1,name:'Minor 2nd',he:'סקונדה קטנה'},
+  {id:'M2',s:2,name:'Major 2nd',he:'סקונדה גדולה'},
+  {id:'m3',s:3,name:'Minor 3rd',he:'טרצה קטנה'},
+  {id:'M3',s:4,name:'Major 3rd',he:'טרצה גדולה'},
+  {id:'P4',s:5,name:'Perfect 4th',he:'קוורטה זכה'},
+  {id:'TT',s:6,name:'Tritone',he:'טריטון'},
+  {id:'P5',s:7,name:'Perfect 5th',he:'קווינטה זכה'},
+  {id:'m6',s:8,name:'Minor 6th',he:'סקסטה קטנה'},
+  {id:'M6',s:9,name:'Major 6th',he:'סקסטה גדולה'}
+];
+const QUALS=[
+  {id:'maj',label:'Major',sym:'',int:[0,4,7]},
+  {id:'min',label:'Minor',sym:'m',int:[0,3,7]},
+  {id:'dim',label:'Diminished',sym:'°',int:[0,3,6]},
+  {id:'dom7',label:'Dom 7',sym:'7',int:[0,4,7,10]},
+  {id:'maj7',label:'Maj 7',sym:'maj7',int:[0,4,7,11]},
+  {id:'m7',label:'Min 7',sym:'m7',int:[0,3,7,10]},
+  {id:'hd7',label:'Half-dim 7',sym:'ø7',int:[0,3,6,10]}
+];
+const INVS=[
+  {label:'Root position',short:'Root',he:'מצב יסודי',fig3:'5/3',fig4:'7',bass:'root'},
+  {label:'1st inversion',short:'1st inv',he:'היפוך ראשון',fig3:'6',fig4:'6/5',bass:'3rd'},
+  {label:'2nd inversion',short:'2nd inv',he:'היפוך שני',fig3:'6/4',fig4:'4/3',bass:'5th'},
+  {label:'3rd inversion',short:'3rd inv',he:'היפוך שלישי',fig3:'',fig4:'4/2',bass:'7th'}
+];
+const TENSIONS=[
+  {id:'b9',s:13,label:'♭9'},{id:'9',s:14,label:'9'},{id:'#9',s:15,label:'♯9'},
+  {id:'11',s:17,label:'11'},{id:'#11',s:18,label:'♯11'},{id:'b13',s:20,label:'♭13'},{id:'13',s:21,label:'13'}
+];
+const TCHORDS=[
+  {id:'maj7',name:'Major 7',sym:'maj7',int:[0,4,7,11],ok:['9','#11','13']},
+  {id:'m7',name:'Minor 7',sym:'m7',int:[0,3,7,10],ok:['9','11','13']},
+  {id:'dom7',name:'Dominant 7',sym:'7',int:[0,4,7,10],ok:['b9','9','#9','#11','b13','13']}
+];
+const byId=(arr,id)=>arr.find(x=>x.id===id);
+
+/* ---------- state ---------- */
+const DEFAULTS={drill:'modes',speed:1,volume:0.8,autoNext:true,
+  modes:{on:['major','minor','phrygian','lydian'],play:'up',root:'random'},
+  intervals:{on:INTERVALS.map(i=>i.id),dir:'up'},
+  inversions:{on:['maj','min'],name:'inv',play:'block'},
+  tensions:{chords:['maj7','m7','dom7'],on:TENSIONS.map(t=>t.id),play:'add',showType:true}};
+let state=JSON.parse(JSON.stringify(DEFAULTS));
+let stats={};
+try{const s=JSON.parse(localStorage.getItem('etl.settings')||'null');if(s)state=Object.assign(state,s);}catch(e){}
+try{stats=JSON.parse(localStorage.getItem('etl.stats')||'{}')||{};}catch(e){}
+const save=()=>{try{localStorage.setItem('etl.settings',JSON.stringify(state));localStorage.setItem('etl.stats',JSON.stringify(stats));}catch(e){}};
+const session={};
+let q=null;          // current question
+let answered=false, firstTry=true, heard=null, nextTimer=null;
+
+/* ---------- audio: small additive piano ---------- */
+let ctx=null,master=null,voices=[];
+function audio(){
+  if(!ctx){
+    ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const comp=ctx.createDynamicsCompressor();comp.threshold.value=-16;comp.ratio.value=4;
+    master=ctx.createGain();master.connect(comp);comp.connect(ctx.destination);
+  }
+  master.gain.value=state.volume;
+  if(ctx.state==='suspended')ctx.resume();
+  return ctx;
+}
+const PARTIALS=[[1,1],[2,.5],[3,.28],[4,.16],[5,.09],[6,.05],[7,.03],[8,.02]];
+function tone(m,t,d,vel){
+  const f=440*Math.pow(2,(m-69)/12);
+  const out=ctx.createGain(), filt=ctx.createBiquadFilter();
+  filt.type='lowpass';filt.Q.value=.4;
+  filt.frequency.setValueAtTime(Math.min(14000,f*12),t);
+  filt.frequency.setTargetAtTime(Math.max(f*3,400),t,.6);
+  out.connect(filt);filt.connect(master);
+  const amp=(vel||.8)*.16*(m<55?1.15:1);
+  out.gain.setValueAtTime(0,t);
+  out.gain.linearRampToValueAtTime(amp,t+.005);
+  out.gain.setTargetAtTime(amp*.35,t+.01,.45);
+  out.gain.setTargetAtTime(0,t+d,.09);
+  const oscs=[];
+  PARTIALS.forEach(([n,a])=>{
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.frequency.value=f*n*(1+.00035*n*n);
+    g.gain.setValueAtTime(a,t);g.gain.setTargetAtTime(a*.1,t,1.6/n);
+    o.connect(g);g.connect(out);o.start(t);o.stop(t+d+.7);oscs.push(o);
+  });
+  voices.push({out,oscs});
+}
+function stopAll(){
+  if(!ctx)return;const now=ctx.currentTime;
+  voices.forEach(v=>{try{v.out.gain.cancelScheduledValues(now);v.out.gain.setTargetAtTime(0,now,.02);v.oscs.forEach(o=>o.stop(now+.15));}catch(e){}});
+  voices=[];
+}
+function playEvents(ev){
+  audio();stopAll();
+  const t0=ctx.currentTime+.06;
+  ev.forEach(e=>tone(e.m,t0+e.t,e.d,e.v));
+}
+const evDur=ev=>Math.max(...ev.map(e=>e.t+e.d));
+
+/* ---------- drills ---------- */
+const step=()=>.55/state.speed;
+
+function melodyPath(){
+  for(let tries=0;tries<80;tries++){
+    let cur=0;const seq=[0];
+    for(let i=0;i<7;i++){
+      const moves=[-2,-1,1,2].filter(mv=>cur+mv>=0&&cur+mv<=4);
+      cur+=pick(moves);seq.push(cur);
+    }
+    seq.push(0);
+    if([1,2,3].every(d=>seq.includes(d)))return seq;
+  }
+  return [0,1,2,3,4,3,1,2,0];
+}
+
+const DRILLS={
+  modes:{
+    tab:'Modes',he:'מודוסים',
+    prompt:()=>'Which mode are these first five notes in?',
+    sub:()=>({up:'You hear degrees 1 to 5 going up.',updown:'You hear degrees 1 to 5 going up and back down.',melody:'You hear a short melody on degrees 1 to 5, starting and ending on the tonic.'})[state.modes.play],
+    options:()=>MODES.filter(m=>state.modes.on.includes(m.id)).map(m=>({id:m.id,label:m.label,word:true,sub:`<span lang="he" dir="rtl">${m.he}</span> · ${m.pat}`})),
+    gen(){
+      const ids=state.modes.on;
+      return {answer:pick(ids),root:state.modes.root==='C'?60:rand(55,64),play:state.modes.play,mel:melodyPath()};
+    },
+    with:(q,id)=>({...q,answer:id}),
+    build(q){
+      const m=byId(MODES,q.answer),s=step();
+      const seq=q.play==='up'?[0,1,2,3,4]:q.play==='updown'?[0,1,2,3,4,3,2,1,0]:q.mel;
+      const ev=seq.map((dg,i)=>({m:q.root+m.steps[dg],t:i*s,d:i===seq.length-1?s*2.4:s*.95}));
+      const notes=m.steps.map(x=>q.root+x);
+      return {ev,notes,title:`${nn(q.root)} ${m.label}`,detail:`${notes.map(nn).join(' ')} · steps ${m.pat}`};
+    }
+  },
+  intervals:{
+    tab:'Intervals',he:'מרווחים',
+    prompt:()=>'Name the interval.',
+    sub:()=>({up:'Two notes, low then high.',down:'Two notes, high then low.',harm:'Two notes played together.',mixed:'Up, down or together. It changes every question.'})[state.intervals.dir],
+    options:()=>INTERVALS.filter(i=>state.intervals.on.includes(i.id)).map(i=>({id:i.id,label:i.id,sub:`${i.name}<br><span lang="he" dir="rtl">${i.he}</span>`})),
+    gen(){
+      const dir=state.intervals.dir==='mixed'?pick(['up','down','harm']):state.intervals.dir;
+      return {answer:pick(state.intervals.on),low:rand(53,65),dir};
+    },
+    with:(q,id)=>({...q,answer:id}),
+    build(q){
+      const iv=byId(INTERVALS,q.answer),s=step(),lo=q.low,hi=q.low+iv.s;
+      let ev;
+      if(q.dir==='harm')ev=[{m:lo,t:0,d:s*3.4},{m:hi,t:0,d:s*3.4}];
+      else{const [a,b]=q.dir==='up'?[lo,hi]:[hi,lo];ev=[{m:a,t:0,d:s*1.5},{m:b,t:s*1.6,d:s*2.6}];}
+      const arrow=q.dir==='harm'?' + ':' → ';
+      const pair=q.dir==='down'?[hi,lo]:[lo,hi];
+      return {ev,notes:[lo,hi],title:`${iv.name}`,detail:`${pair.map(nn).join(arrow)} · ${iv.s} semitone${iv.s>1?'s':''} · ${({up:'ascending',down:'descending',harm:'harmonic'})[q.dir]}`};
+    }
+  },
+  inversions:{
+    tab:'Inversions',he:'היפוכים',
+    prompt:()=>state.inversions.name==='inv'?'Which inversion is this chord in?':'Name the chord quality and the inversion.',
+    sub:()=>'Listen to the bass. Root in the bass is root position, the 3rd is 1st inversion, the 5th is 2nd, the 7th is 3rd.',
+    options(){
+      const qs=QUALS.filter(x=>state.inversions.on.includes(x.id));
+      const has7=qs.some(x=>x.int.length===4), has3=qs.some(x=>x.int.length===3);
+      if(state.inversions.name==='inv'){
+        return INVS.slice(0,has7?4:3).map((v,i)=>({id:'i'+i,label:v.short,word:true,
+          sub:`<span lang="he" dir="rtl">${v.he}</span> · ${[has3&&v.fig3,has7&&v.fig4].filter(Boolean).join(' / ')}`}));
+      }
+      const out=[];
+      qs.forEach(x=>INVS.slice(0,x.int.length).forEach((v,i)=>out.push({id:x.id+'|'+i,label:`${x.label}`,word:true,sub:`${v.short} · ${x.int.length===3?v.fig3:v.fig4}`})));
+      return out;
+    },
+    gen(){
+      const x=pick(QUALS.filter(c=>state.inversions.on.includes(c.id)));
+      const inv=rand(0,x.int.length-1);
+      return {qual:x.id,inv,root:rand(48,59),play:state.inversions.play,answer:state.inversions.name==='inv'?'i'+inv:x.id+'|'+inv};
+    },
+    with(q,id){
+      if(id[0]==='i'&&!id.includes('|')){
+        const inv=+id.slice(1);let qual=q.qual;
+        if(inv>=byId(QUALS,qual).int.length)qual=byId(QUALS,qual).int.length===3?({maj:'dom7',min:'m7',dim:'hd7'})[qual]:qual;
+        return {...q,inv,qual,answer:id};
+      }
+      const [qual,inv]=id.split('|');return {...q,qual,inv:+inv,answer:id};
+    },
+    build(q){
+      const x=byId(QUALS,q.qual),s=step();
+      let notes=x.int.map(i=>q.root+i);
+      notes=[...notes.slice(q.inv),...notes.slice(0,q.inv).map(n=>n+12)];
+      while(notes[0]>59)notes=notes.map(n=>n-12);
+      while(notes[0]<46)notes=notes.map(n=>n+12);
+      const blk=(t0,d)=>notes.map(m=>({m,t:t0,d}));
+      const arp=(t0)=>{const tot=notes.length*s*.7+s*2;return notes.map((m,i)=>({m,t:t0+i*s*.7,d:tot-i*s*.7}));};
+      let ev=q.play==='block'?blk(0,s*3.6):q.play==='arp'?arp(0):[...blk(0,s*2.8),...arp(s*3.4)];
+      const v=INVS[q.inv],fig=x.int.length===3?v.fig3:v.fig4;
+      return {ev,notes,title:`${nn(q.root)}${x.sym} · ${v.label} (${fig})`,detail:`${notes.map(nn).join(' ')} · bass ${nn(notes[0])} is the ${v.bass}`,bass:notes[0]};
+    }
+  },
+  tensions:{
+    tab:'Tensions',he:'טנשנים',
+    prompt(){
+      if(!q||!state.tensions.showType)return 'Which tension is on top of the chord?';
+      return `A ${byId(TCHORDS,q.ctype).name} chord. Which tension is on top?`;
+    },
+    sub:()=>({add:'The 7th chord sounds first, then the tension enters above it.',together:'The chord and the tension sound together.',arp:'The chord is spread upward with the tension as the last note.'})[state.tensions.play],
+    options(){
+      return TENSIONS.filter(t=>state.tensions.on.includes(t.id)).map(t=>{
+        const fits=TCHORDS.filter(c=>c.ok.includes(t.id)).map(c=>c.sym).join(' · ');
+        const off=q&&state.tensions.showType&&!byId(TCHORDS,q.ctype).ok.includes(t.id);
+        return {id:t.id,label:t.label,sub:'on '+fits,disabled:off};
+      });
+    },
+    gen(){
+      const types=TCHORDS.filter(c=>state.tensions.chords.includes(c.id)&&c.ok.some(t=>state.tensions.on.includes(t)));
+      if(!types.length)return null;
+      const c=pick(types);
+      return {ctype:c.id,answer:pick(c.ok.filter(t=>state.tensions.on.includes(t))),root:rand(45,52),play:state.tensions.play};
+    },
+    with:(q,id)=>({...q,answer:id}),
+    build(q){
+      const c=byId(TCHORDS,q.ctype),t=byId(TENSIONS,q.answer),s=step();
+      const chord=[q.root,...c.int.slice(1).map(i=>q.root+12+i)];
+      const top=q.root+12+t.s;
+      let ev;
+      if(q.play==='add')ev=[...chord.map(m=>({m,t:0,d:s*6})),{m:top,t:s*2.4,d:s*3.6,v:.9}];
+      else if(q.play==='together')ev=[...chord,top].map(m=>({m,t:0,d:s*4}));
+      else{const all=[...chord,top],tot=all.length*s*.6+s*2.5;ev=all.map((m,i)=>({m,t:i*s*.6,d:tot-i*s*.6}));}
+      return {ev,notes:[...chord,top],title:`${nn(q.root)}${c.sym}(${t.label})`,detail:`${chord.map(nn).join(' ')} + ${nn(top)} on top · ${t.label} of ${nn(q.root)}`,top};
+    }
+  }
+};
+const D=()=>DRILLS[state.drill];
+
+/* ---------- UI ---------- */
+function renderTabs(){
+  $('tabs').innerHTML=Object.entries(DRILLS).map(([k,d])=>`<button role="tab" type="button" data-d="${k}" aria-selected="${state.drill===k}">${d.tab}<small lang="he" dir="rtl">${d.he}</small></button>`).join('');
+}
+function chipGroup(key,list,labelFn,arrName){
+  const on=state[state.drill][arrName||'on'];
+  return `<div class="checks">${list.map(x=>`<label class="chip"><input type="checkbox" id="c-${state.drill}-${arrName||'on'}-${x.id}" data-arr="${arrName||'on'}" value="${x.id}" ${on.includes(x.id)?'checked':''}><span>${labelFn(x)}</span></label>`).join('')}</div>`;
+}
+function sel(id,key,opts){
+  const v=state[state.drill][key];
+  return `<select id="${id}" data-key="${key}">${opts.map(([val,lab])=>`<option value="${val}" ${v===val?'selected':''}>${lab}</option>`).join('')}</select>`;
+}
+function renderSettings(){
+  const d=state.drill;let h=`<h3>${D().tab} settings</h3>`;
+  if(d==='modes'){
+    h+=`<fieldset><legend>Modes in the quiz</legend>${chipGroup('on',MODES,m=>m.label)}</fieldset>
+    <fieldset><legend>What you hear</legend>${sel('s-play','play',[['up','Scale up 1–5'],['updown','Up and down 1–5–1'],['melody','Melody on 1–5 (harder)']])}</fieldset>
+    <fieldset><legend>Tonic</legend>${sel('s-root','root',[['random','Random tonic'],['C','Always C']])}</fieldset>`;
+  }else if(d==='intervals'){
+    h+=`<fieldset><legend>Intervals in the quiz</legend>${chipGroup('on',INTERVALS,i=>i.id)}</fieldset>
+    <fieldset><legend>Direction</legend>${sel('s-dir','dir',[['up','Ascending'],['down','Descending'],['harm','Harmonic (together)'],['mixed','Mixed']])}</fieldset>`;
+  }else if(d==='inversions'){
+    h+=`<fieldset><legend>Chords in the quiz</legend>${chipGroup('on',QUALS,x=>x.label)}</fieldset>
+    <fieldset><legend>What you name</legend>${sel('s-name','name',[['inv','Inversion only'],['both','Quality and inversion']])}</fieldset>
+    <fieldset><legend>How it is played</legend>${sel('s-iplay','play',[['block','Block chord'],['arp','Arpeggio up'],['both','Block, then arpeggio']])}</fieldset>`;
+  }else{
+    h+=`<fieldset><legend>Chord types</legend>${chipGroup('chords',TCHORDS,c=>c.sym,'chords')}</fieldset>
+    <fieldset><legend>Tensions in the quiz</legend>${chipGroup('on',TENSIONS,t=>t.label)}</fieldset>
+    <fieldset><legend>How it is played</legend>${sel('s-tplay','play',[['add','Chord, then add tension'],['together','All together'],['arp','Arpeggio up']])}</fieldset>
+    <label class="toggle"><input type="checkbox" id="s-showtype" ${state.tensions.showType?'checked':''}> Tell me the chord type</label>`;
+  }
+  $('settings').innerHTML=h;
+}
+function renderScore(){
+  const s=session[state.drill]||{c:0,n:0,st:0};
+  $('score').innerHTML=`<span><b>${s.c}</b> / ${s.n} right</span><span>streak <b>${s.st}</b></span>`;
+}
+function accOf(id){const r=(stats[state.drill]||{})[id];return r&&r.n?r.c/r.n:null;}
+function renderAnswers(){
+  const opts=D().options();
+  if(opts.length<2){$('answers').innerHTML=`<div class="empty">Turn on at least two answers in the settings to start.</div>`;return;}
+  $('answers').innerHTML=opts.map((o,i)=>{
+    const a=accOf(o.id),r=(stats[state.drill]||{})[o.id];
+    let cls='ans';
+    if(answered&&q){if(o.id===q.answer)cls+=' right';else if(o.id===q.picked)cls+=' wrong';}
+    if(heard===o.id)cls+=' heard';
+    return `<button type="button" class="${cls}" data-id="${o.id}" ${o.disabled&&!answered?'disabled':''} title="${r?Math.round(a*100)+'% right over '+r.n+' tries':'No tries yet'}">
+      ${i<9?`<span class="k">${i+1}</span>`:''}<span class="l ${o.word?'word':''}">${o.label}</span><span class="s">${o.sub||''}</span>
+      <span class="bar" style="--acc:${a==null?0:Math.round(a*100)}%"></span></button>`;
+  }).join('');
+}
+function renderPrompt(){
+  $('prompt').textContent=D().prompt();
+  $('sub').textContent=D().sub();
+  const p=$('play');
+  p.innerHTML=!q?`<svg viewBox="0 0 16 16"><path d="M4 2l10 6-10 6z"/></svg> Start <kbd>Space</kbd>`:`<svg viewBox="0 0 16 16"><path d="M8 2a6 6 0 1 0 6 6h-2a4 4 0 1 1-4-4v3l4-4-4-4z"/></svg> Play again <kbd>Space</kbd>`;
+  $('next').disabled=!q;
+}
+function renderFeedback(compare){
+  const f=$('feedback');
+  if(!q){f.className='feedback';f.innerHTML=`<div class="hint">Press Start to hear the first question. Before you start, tap any answer to hear an example of it.</div>`;return;}
+  if(!answered){f.className='feedback';f.innerHTML=`<div class="hint">Listen as many times as you need, then pick an answer.</div>`;return;}
+  const swipe=`<div class="hint swipe">Swipe left for the next question.</div>`;
+  const b=D().build(q);const ok=q.picked===q.answer;
+  let h=`<div class="head">${ok?(firstTry?'Correct':'Correct on a second try'):'Not quite'} · ${b.title}</div><div class="detail">${b.detail}</div>`;
+  if(compare&&compare!==q.answer){const c=D().build(D().with(q,compare));h+=`<div class="detail">You are hearing: ${c.title} · ${c.detail}</div>`;}
+  h+=`<div class="hint">Tap any answer to hear it with the same notes, so you can compare.</div>`;
+  if(!ok)h+=`<div class="row"><button class="btn" type="button" data-cmp="${q.answer}">Hear the correct one</button><button class="btn" type="button" data-cmp="${q.picked}">Hear my answer</button></div>`;
+  f.className='feedback '+(ok?'ok':'no');f.innerHTML=h+swipe;
+}
+function renderKeys(notes){
+  const show=notes&&notes.length;
+  let lo=show?Math.min(...notes):48,hi=show?Math.max(...notes):83;
+  lo=lo-((lo%12)+12)%12; hi=hi+(11-((hi%12)+12)%12);
+  while(hi-lo<35){if(lo>36)lo-=12;else hi+=12;}
+  const isB=m=>[1,3,6,8,10].includes(((m%12)+12)%12);
+  const W=20,H=96,BW=12,BH=60;let whites=[],blacks=[],x=0;
+  const set=new Set(notes||[]);
+  for(let m=lo;m<=hi;m++){
+    if(!isB(m)){whites.push({m,x});x+=W;}else blacks.push({m,x:x-BW/2});
+  }
+  let svg=`<svg viewBox="0 0 ${x} ${H+12}" role="img" aria-label="${show?'Notes: '+[...set].sort((a,b)=>a-b).map(nn).join(' '):'Piano keyboard'}">`;
+  whites.forEach(k=>{svg+=`<rect data-m="${k.m}" class="wk ${set.has(k.m)?'on':''}" x="${k.x+.5}" y=".5" width="${W-1}" height="${H}" rx="2"/>`;
+    if(set.has(k.m))svg+=`<text class="kl" x="${k.x+W/2}" y="${H-8}">${nn(k.m)}</text>`;
+    if(k.m%12===0)svg+=`<text class="cl" x="${k.x+W/2}" y="${H+10}">C${Math.floor(k.m/12)-1}</text>`;});
+  blacks.forEach(k=>{svg+=`<rect data-m="${k.m}" class="bk ${set.has(k.m)?'on':''}" x="${k.x}" y=".5" width="${BW}" height="${BH}" rx="1.5"/>`;
+    if(set.has(k.m))svg+=`<text class="kl" style="font-size:7px" x="${k.x+BW/2}" y="${BH-6}">${nn(k.m)}</text>`;});
+  svg+='</svg>';
+  $('kb').innerHTML=svg;
+  $('kbcap').textContent=show?'The notes you just heard. Tap any key to play it.':'Tap any key to play it. The notes light up after you answer.';
+  $('kbrange').textContent=`C${Math.floor(lo/12)-1} to B${Math.floor(hi/12)-1}`;
+}
+function renderWeak(){
+  const st=stats[state.drill]||{};
+  const labels=Object.fromEntries(D().options().map(o=>[o.id,o.label]));
+  const rows=Object.entries(st).filter(([id,r])=>r.n>=3&&labels[id]).map(([id,r])=>[id,r.c/r.n]).filter(r=>r[1]<.8).sort((a,b)=>a[1]-b[1]).slice(0,3);
+  $('weak').innerHTML=rows.length?`Most missed: ${rows.map(([id,a])=>`<b>${labels[id]}</b> ${Math.round(a*100)}%`).join(', ')}`:'The green line under each answer shows how often you get it right.';
+}
+function renderAll(compare){renderTabs();renderSettings();renderScore();renderPrompt();renderAnswers();renderFeedback(compare);renderWeak();}
+
+/* ---------- flow ---------- */
+function newQuestion(){
+  clearTimeout(nextTimer);
+  if(D().options().length<2){q=null;renderAll();return;}
+  let nq,tries=0;
+  do{nq=D().gen();tries++;}while(nq&&q&&nq.answer===q.answer&&Math.random()<.6&&tries<5);
+  q=nq;answered=false;firstTry=true;heard=null;
+  renderAll();renderKeys(null);
+  if(q)playEvents(D().build(q).ev);
+}
+function play(){
+  if(!q){newQuestion();return;}
+  heard=null;playEvents(D().build(q).ev);renderAnswers();
+}
+function record(ok){
+  const s=session[state.drill]||(session[state.drill]={c:0,n:0,st:0});
+  s.n++;if(ok){s.c++;s.st++;}else s.st=0;
+  const st=stats[state.drill]||(stats[state.drill]={});
+  const r=st[q.answer]||(st[q.answer]={n:0,c:0});r.n++;if(ok)r.c++;
+  save();
+}
+function choose(id){
+  if(!q||answered){ // explore mode: hear the option
+    let base=q||D().gen();
+    if(!base)return;
+    const alt=D().with(base,id),b=D().build(alt);
+    heard=id;playEvents(b.ev);renderKeys(b.notes);renderAnswers();
+    if(answered)renderFeedback(id);
+    else{$('feedback').className='feedback';$('feedback').innerHTML=`<div class="head">Example · ${b.title}</div><div class="detail">${b.detail}</div><div class="hint">Press Start when you are ready for the quiz.</div>`;}
+    return;
+  }
+  const ok=id===q.answer;
+  q.picked=id;answered=true;record(ok);
+  const b=D().build(q);
+  renderScore();renderAnswers();renderFeedback();renderKeys(b.notes);renderWeak();
+  try{navigator.vibrate&&navigator.vibrate(ok?12:[25,40,25]);}catch(e){}
+  if(narrow.matches&&!ok)$('feedback').scrollIntoView({behavior:'smooth',block:'nearest'});
+  if(ok&&state.autoNext){nextTimer=setTimeout(newQuestion,1300);}
+}
+
+/* ---------- events ---------- */
+$('tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;state.drill=b.dataset.d;save();stopAll();q=null;answered=false;heard=null;renderAll();renderKeys(null);});
+$('answers').addEventListener('click',e=>{const b=e.target.closest('.ans');if(b&&!b.disabled)choose(b.dataset.id);});
+$('feedback').addEventListener('click',e=>{const b=e.target.closest('[data-cmp]');if(!b)return;const id=b.dataset.cmp;heard=id;const bb=D().build(D().with(q,id));playEvents(bb.ev);renderKeys(bb.notes);renderAnswers();});
+$('play').addEventListener('click',play);
+$('next').addEventListener('click',newQuestion);
+$('settings').addEventListener('change',e=>{
+  const t=e.target,cfg=state[state.drill];
+  if(t.type==='checkbox'&&t.dataset.arr){const arr=cfg[t.dataset.arr];if(t.checked){if(!arr.includes(t.value))arr.push(t.value);}else cfg[t.dataset.arr]=arr.filter(v=>v!==t.value);}
+  else if(t.id==='s-showtype')cfg.showType=t.checked;
+  else if(t.dataset.key)cfg[t.dataset.key]=t.value;
+  save();q=null;answered=false;heard=null;stopAll();renderAll();renderKeys(null);
+});
+$('speed').value=state.speed;$('volume').value=state.volume;$('autonext').checked=state.autoNext;
+$('speed').addEventListener('input',e=>{state.speed=+e.target.value;save();});
+$('volume').addEventListener('input',e=>{state.volume=+e.target.value;if(master)master.gain.value=state.volume;save();});
+$('autonext').addEventListener('change',e=>{state.autoNext=e.target.checked;save();});
+$('resetstats').addEventListener('click',()=>{stats[state.drill]={};session[state.drill]={c:0,n:0,st:0};save();renderAll();});
+document.addEventListener('keydown',e=>{
+  if(e.target.closest('select,input,textarea'))return;
+  if(e.metaKey||e.ctrlKey||e.altKey)return;
+  if(e.code==='Space'){e.preventDefault();play();}
+  else if(e.key==='Enter'){if(e.target.closest('button'))return;e.preventDefault();newQuestion();}
+  else if(/^[1-9]$/.test(e.key)){const b=$('answers').querySelectorAll('.ans')[+e.key-1];if(b&&!b.disabled)choose(b.dataset.id);}
+});
+/* ---------- phone ---------- */
+try{if(matchMedia('(hover:none)').matches)document.documentElement.classList.add('touch');}catch(e){}
+try{if(matchMedia('(max-width:860px)').matches)$('setwrap').open=false;}catch(e){}
+$('kb').addEventListener('pointerdown',e=>{
+  const r=e.target.closest('rect[data-m]');if(!r)return;
+  e.preventDefault();audio();tone(+r.dataset.m,ctx.currentTime+.01,.9,.8);
+  r.classList.add('tap');setTimeout(()=>r.classList.remove('tap'),180);
+});
+const bench=document.querySelector('.bench');let sx=null,sy=null;
+bench.addEventListener('touchstart',e=>{if(e.target.closest('.piano'))return;const t=e.touches[0];sx=t.clientX;sy=t.clientY;},{passive:true});
+bench.addEventListener('touchend',e=>{
+  if(sx==null)return;const t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy;sx=null;
+  if(dx<-70&&Math.abs(dy)<50&&q&&answered)newQuestion();
+},{passive:true});
+renderAll();renderKeys(null);
+})();
+</script>
+
+</html>
